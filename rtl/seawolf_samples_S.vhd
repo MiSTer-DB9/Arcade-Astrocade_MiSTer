@@ -3,7 +3,7 @@ library ieee;
   use ieee.std_logic_unsigned.all;
   use ieee.numeric_std.all;
 
-entity SeawolfSound is
+entity SeawolfSound_SDRAM is
 port (
 	cpu_addr  	: in  std_logic_vector(15 downto 0);
 	cpu_data  	: in  std_logic_vector(7 downto 0);
@@ -27,7 +27,7 @@ port (
 );
 end entity;
 
-architecture RTL of SeawolfSound is
+architecture RTL of SeawolfSound_SDRAM is
 
  signal wav_clk_cnt : std_logic_vector(8 downto 0) := (others=>'0'); -- 44kHz divider / sound# counter
  

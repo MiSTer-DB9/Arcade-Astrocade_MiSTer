@@ -3,13 +3,14 @@ library ieee;
   use ieee.std_logic_unsigned.all;
   use ieee.numeric_std.all;
 
-entity GorfSound is
+entity GorfSound_DDRAM is
 port (
 	-- Sample data
 	s_enable  	: in  std_logic;
 	s_addr    	: out std_logic_vector(23 downto 0);
 	s_data    	: in  std_logic_vector(15 downto 0);
 	s_read    	: out std_logic;
+	s_ready     : in  std_logic;
 	-- Sounds out
 	audio_out_l : out std_logic_vector(15 downto 0);
 	audio_out_r : out std_logic_vector(15 downto 0);
@@ -32,7 +33,7 @@ end entity;
 --
 -- general logic (and samples) taken from older version of Mame before speech chip added
 
-architecture RTL of GorfSound is
+architecture RTL of GorfSound_DDRAM is
 
  signal wav_clk_cnt : std_logic_vector(8 downto 0) := (others=>'0'); -- 44kHz divider / sound# counter
  
@@ -41,7 +42,10 @@ architecture RTL of GorfSound is
  -- sound#
  signal snd_id   : integer range 0 to 15;				-- for Time Slice
  signal snd_play : snd_id_t := 87; 						-- current wav playing
- signal audio    : std_logic_vector(15 downto 0);
+ signal audio    : std_logic_vector(15 downto 0) register := (others=>'0');
+ 
+ signal wave_read_ct   : std_logic_vector(2 downto 0) register := (others=>'0'); 
+ signal wave_data      : std_logic_vector(15 downto 0) register := (others=>'0');
  
  type snd_addr_t is array(snd_id_t) of std_logic_vector(23 downto 0);
  
@@ -344,34 +348,59 @@ architecture RTL of GorfSound is
 			 wav_clk_cnt <= wav_clk_cnt + 1;
 		 end if;
 
-		-- sdram read trigger (and auto refresh period)
-		if wav_clk_cnt(4 downto 0) = "00000" then s_read <= '1';end if;
-		if wav_clk_cnt(4 downto 0) = "00010" then s_read <= '0';end if;			
-
 		-- single channel
-		if snd_id = 2 and clk11k="01" then 
-		
-			-- set sdram addr at begining of cycle
-			if wav_clk_cnt(4 downto 0) = "00000" then
-				s_addr <= snd_addrs;			
-			end if;
+		if clk11k="01" then 
 		
 			-- sound# currently playing 
 			if (snd_starteds = '1') then
 			
-				-- get sound# sample and update next sound# address
-				if wav_clk_cnt(4 downto 0) = "01000" then
-											
-					audio <= s_data;
-					
-					-- update next sound# address
-					snd_addrs <= snd_addrs + 2;	
+				-- set ddram addr
+				if snd_id = 2 and wav_clk_cnt(4 downto 0) = "00000" then
+					s_addr <= snd_addrs;			
+					wave_read_ct <= "001";
 				end if;
+
+				if wave_read_ct /= "000" then
 				
+						case wave_read_ct is
+						
+							when "001" => -- Read first byte
+								s_read       <= '1';
+								wave_read_ct <= "010";
+						
+							when "010" => -- First byte returned ?
+								if s_ready='1' then
+									s_read <= '0';
+									s_addr <= snd_addrs + 1;
+									wave_data(7 downto 0) <= s_data(7 downto 0);
+									wave_read_ct <= "011";
+								end if;
+									
+							when "011" => -- Read second byte
+									s_read <= '1';
+									wave_read_ct <= "100";
+												
+							when "100" => -- Second byte returned ?
+								if s_ready='1' then
+									s_read <= '0';
+									wave_data(15 downto 8) <= s_data(7 downto 0);
+									wave_read_ct <= "101";
+								end if;
+
+							when "101" => -- Completed
+									audio <= wave_data;
+									snd_addrs <= snd_addrs + 2;	
+									wave_read_ct <= "000";
+						
+							when others => null;
+							
+						end case;
+						
+				end if;
+			
 				-- (stop / loop)
 				if snd_addrs >= snd_stops(snd_play) then 
 						snd_starteds <= '0';
-						--Phoneme <= "111111";
 						snd_play <= 87;
 						audio <= (others => '0');
 				end if;
