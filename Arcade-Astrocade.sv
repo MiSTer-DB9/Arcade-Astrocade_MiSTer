@@ -48,6 +48,7 @@
 // ----------
 // Control mapping P2
 // SC01 done using samples for the moment.
+// Oct 20 - Gorf Program 1 added as an option (includes speech)
 //===========================================================================
 
 module emu
@@ -203,9 +204,9 @@ assign AUDIO_S   = mod_seawolf2; // signed - seawolf 2, unsigned others
 assign AUDIO_MIX = 2'd0;
 
 // Use in Gorf to drive rank lights (1-6 = rank lights, 7 = joystick on/off ?)
-assign LED_USER  = B1_U; // ioctl_download;	
-assign LED_DISK  = {1'd1,B1_D}; // 0;
-assign LED_POWER = {1'd1,B1_L}; // 0;
+assign LED_USER  = ioctl_download;	
+assign LED_DISK  = 0;
+assign LED_POWER = 0;
 
 assign VIDEO_ARX = status[1] ? 8'd16 : status[2] ? 8'd4 : 8'd3;
 assign VIDEO_ARY = status[1] ? 8'd9  : status[2] ? 8'd3 : 8'd4;
@@ -349,6 +350,7 @@ reg mod_spacezap = 0;
 reg mod_gorf     = 0;
 reg mod_wow      = 0;
 reg mod_robby    = 0;
+reg mod_gorf1    = 0;
 
 always @(posedge clk_sys) begin
 	reg [7:0] mod = 0;
@@ -360,7 +362,15 @@ always @(posedge clk_sys) begin
 	mod_gorf		<= (mod == 4);
 	mod_wow			<= (mod == 5);
 	mod_robby		<= (mod == 6);
+	mod_gorf1		<= (mod == 7);
+
+	if (mod_gorf1) begin
+		mod_gorf	<= 1;
+		Gorf1 		<= 1;
+		end
 end
+
+
 
 // Game options
 wire Stereo    = mod_gorf | mod_wow | mod_robby;                // Two sound chips fitted
@@ -370,8 +380,8 @@ wire High_Rom  = ~mod_seawolf2;	                                // Seawolf2 has 
 wire Extra_Rom = mod_robby;  									// Robby has ROM D000-EFFF as well
 wire OnlySamples = mod_seawolf2;                                // Uses samples but no sound chip
 wire PlusSamples = mod_gorf | mod_wow;							// Uses samples AND sound chip
+reg  Gorf1 = 1'b0;												// Default is Gorf selected
 
-////////////////////////////  INPUT  ////////////////////////////////////
 
 wire [7:0] col_select;
 wire [7:0] row_data;
@@ -548,11 +558,11 @@ assign AUDIO_R = OnlySamples ? sample_r : PlusSamples ? Sum_R : Stereo ? {audio_
 	ddram ddram
 	(
 		.*,
-		.addr(wav_load ? ioctl_addr : {4'd0,wave_addr}),
+		.addr(wav_load ? {3'd0,ioctl_addr} : {4'd0,wave_addr}),
 		.dout(wave_data[7:0]),
 		.din(ioctl_dout),
 		.we(wav_wr),
-		.rd(wave_rd),
+		.rd(~ioctl_download & wave_rd),
 		.ready(wav_data_ready)
 	);
 
@@ -572,6 +582,7 @@ assign AUDIO_R = OnlySamples ? sample_r : PlusSamples ? Sum_R : Stereo ? {audio_
 		else if(~wav_wr & ioctl_wait & wav_data_ready) begin
 			ioctl_wait <= 0;
 		end
+		
 	end
 
 `endif
@@ -637,6 +648,7 @@ screen_rotate screen_rotate
 
 BALLY bally
 (
+	.GORF1          (Gorf1),   //-- 0 = Gorf, 1 = Gorfprgm1
 	// Audio
 	.O_AUDIO_L      (audio_l), //  : out   std_logic_vector(7 downto 0);
 	.O_AUDIO_R      (audio_r), //  : out   std_logic_vector(7 downto 0);
