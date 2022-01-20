@@ -351,7 +351,7 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 	.joystick_0(joystick_0_USB),
 	.joystick_1(joystick_1_USB),
 	.joystick_l_analog_0(joystick_a0),
-	.joystick_l_analog_1(joystick_a1)
+	.joystick_l_analog_1(joystick_a1),
 	
 	.joy_raw(joydb_1[5:0]),
 );
