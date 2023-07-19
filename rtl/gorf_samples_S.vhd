@@ -331,6 +331,7 @@ architecture RTL of GorfSound_SDRAM is
 						when x"11C2" => snd_play <= 1; 						-- Again
 						when x"B3BB" | x"1185" => snd_play <= 3; 			-- Am
 						when x"B386" => snd_play <= 4; 						-- And
+						when x"B3E7" => snd_play <= 5; 						-- Annihalate						
 						when x"11AE" | x"1310" => snd_play <= 6; 			-- Another
 						when x"B3AA" | x"12DE" => snd_play <= 7; 			-- Are
 						when x"11FD" | x"1203" => snd_play <= 8; 			-- Attack
@@ -384,7 +385,7 @@ architecture RTL of GorfSound_SDRAM is
 						when x"B34A" => snd_play <= 53; 					-- Meet
 						when x"120E" => snd_play <= 54; 					-- Move
 						when x"A920" | x"B395" => snd_play <= 55;			-- My
---						when x"None" => snd_play <= 56; 					-- Near
+						when x"1336" => snd_play <= 56; 					-- Near
 						when x"A8D8" => snd_play <= 57; 					-- Next
 						when x"124B" => snd_play <= 58; 					-- Nice
 						when x"126B" => snd_play <= 59; 					-- No
