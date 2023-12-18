@@ -19,6 +19,15 @@
 //============================================================================
 
 
+//============================================================================
+// Cabinet Build - enabled by set global assignment "CABINET" in QSF
+//----------------------------------------------------------------------------
+// This needs some changes to sys_top.v to allow access to output pins used
+// for SD card on IO board. These are used to drive Gorf ranking lights and
+// provide a third audio output for Wizard of Wor
+//============================================================================
+
+
 //===========================================================================
 //                     Current status / To Do list
 //===========================================================================
@@ -188,11 +197,18 @@ module emu
 	output  [1:0] USER_MODE,
 	input	[7:0] USER_IN,
 	output	[7:0] USER_OUT,
-	// Needs mod to sys_top.v to allow access to these
+
+
 `ifdef CABINET
+	// Needs mod to sys_top.v to allow access to these pins
+
+	// Gorf Cabinet interface to drive ranking lights
 	output [3:0]	L_Address,
 	output         L_Data,   
 	output        	L_Write,
+
+	// WoW third audio channel
+	output			A_Channel,
 `endif
 		
 	input         OSD_STATUS
@@ -437,8 +453,13 @@ wire [7:0] ct1_sz = {3'D7,~B2_F,~B2_R,~B2_L,~B2_D,~B2_U};
 wire [7:0] ct2_sz = {2'D3,sw[2][0],~B1_F,~B1_R,~B1_L,~B1_D,~B1_U};
 // Wizard of Wor
 wire [7:0] ct0_ww = {sw[2][2],~B2_S,~B1_S,1'b1,sw[2][1],1'b1,~B1_C,1'b1};
+`ifdef CABINET		// Cabinet doesn't use digital sticks
+wire [7:0] ct1_ww = {2'd3,~B2_F,B2_FB,~B2_R,~B2_L,~B2_D,~B2_U};  
+wire [7:0] ct2_ww = {Votrax_Status,1'd1,~B1_F,B1_FB,~B1_R,~B1_L,~B1_D,~B1_U}; 
+`else
 wire [7:0] ct1_ww = sw[0][1] ? {2'd3,~B2_F,~W2_FB,~W2_R,~W2_L,~W2_D,~W2_U} : {2'd3,~B2_F,B2_FB,~B2_R,~B2_L,~B2_D,~B2_U};
 wire [7:0] ct2_ww = sw[0][0] ? {Votrax_Status,1'd1,~B1_F,~W1_FB,~W1_R,~W1_L,~W1_D,~W1_U} : {Votrax_Status,1'd1,~B1_F,B1_FB,~B1_R,~B1_L,~B1_D,~B1_U};
+`endif
 // Gorf
 wire [7:0] ct0_gf = {sw[2][2],sw[2][0],~B2_S,~B1_S,1'b1,sw[2][1],~B1_C,1'b1};
 wire [7:0] ct1_gf = {1'd0,2'd1,~B2_F,~B2_R,~B2_L,~B2_D,~B2_U};
@@ -794,17 +815,17 @@ always @(posedge MY_CLK_VIDEO) begin
 		// Allow mono mode for Space Zap
 		if (mod_spacezap) begin
 			if (sw[0][1] == 1'd1) begin
-				if ((G == 4'd15) && (B == 4'd4)) begin
+				if ((B[3:0] == 4'd06)) begin
 					O_R <= 8'd238;
 					O_G <= 8'd238;
 					O_B <= 8'd238;
 				end
-				if (B == 4'd11) begin
+				if (B == 8'd176) begin
 					O_R <= 8'd170;
 					O_G <= 8'd170;
 					O_B <= 8'd170;
 				end
-				if (G == 4'd04) begin
+				if (B[3:0] == 4'd03) begin
 					O_R <= 8'd136;
 					O_G <= 8'd136;
 					O_B <= 8'd136;
@@ -1099,8 +1120,14 @@ end
 
 // Wizard of Wor - Third sound channel
 
-
-// P2 controls (uses P1 buttons for P2)
+second_order_dac wow3
+(
+  .i_clk(CLK_AUDIO),
+  .i_res(~reset),
+  .i_ce(1'b1),
+  .i_func(sample_l), 
+  .o_DAC(wowdac)
+);
 
 `endif
 
