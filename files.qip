@@ -30,5 +30,3 @@ set_global_assignment -name VHDL_FILE rtl/seawolf_samples_D.vhd
 set_global_assignment -name VERILOG_FILE rtl/second_order_dac.v
 set_global_assignment -name SYSTEMVERILOG_FILE "Arcade-Astrocade.sv"
 
-set_global_assignment -name VERILOG_FILE rtl/joydb9md.v
-set_global_assignment -name VERILOG_FILE rtl/joydb15.v
